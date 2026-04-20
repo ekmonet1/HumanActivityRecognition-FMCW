@@ -128,10 +128,10 @@ SUMMARY_SHEET_NAME = "summary_시트명"
 
 | 클래스 | 확정 윈도우 | 확률 임계값 |
 |---|---|---|
-| sit / stand | 6프레임 | 90% |
-| squat | 6프레임 | 90% |
-| fall | 6프레임 | 90% |
-| walk / none | 6프레임 | 90% |
+| sit / stand | 6프레임 | 83% |
+| squat | 6프레임 | 83% |
+| fall | 6프레임 | 83% |
+| walk_away / walk_toward | 6프레임 | 83% |
 
 - 종료 시 Excel summary 시트에 자동으로 행 추가 (시간별 활동 카운트 + 지속시간)
 
