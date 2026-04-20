@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Daily Summary</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { display:flex; justify-content:center; align-items:center; height:100vh; background-color:#e5e5ea; font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif; }
+    .iphone-frame { width:390px; height:844px; background:#000; border-radius:60px; padding:14px; box-shadow:0 0 20px rgba(0,0,0,0.6); position:relative; }
+    .iphone-screen { width:100%; height:100%; border-radius:44px; background-color:#f2f2f7; overflow:hidden; position:relative; padding-bottom:20px; }
+    .notch { position:absolute; top:8px; left:50%; transform:translateX(-50%); width:150px; height:30px; background:#000; border-radius:0 0 20px 20px; z-index:2; }
+
+    header { background:#fff; padding:24px 20px 16px 20px; border-bottom:1px solid #ccc; display:flex; align-items:center; gap:10px; }
+    .back { text-decoration:none; color:#ff3b30; border:1px solid #ff3b3055; padding:8px 12px; border-radius:10px; font-size:14px; }
+    .title { font-size:20px; font-weight:800; color:#111; margin-left:auto; margin-right:auto; transform:translateX(-24px); }
+
+    main.dashboard { display:flex; flex-direction:column; gap:12px; padding:16px; }
+    .row { display:flex; justify-content:space-between; gap:12px; }
+    .card { flex:1; background:#fff; border-radius:16px; padding:16px; box-shadow:0 2px 6px rgba(0,0,0,0.1); display:flex; flex-direction:column; justify-content:center; align-items:flex-start; }
+    .card-title { font-size:15px; color:#ff3b30; margin-bottom:6px; }
+    .card-value { font-size:24px; font-weight:bold; line-height:1.2; }
+    .card-unit { font-size:14px; color:#888; margin-left:6px; }
+
+    /* 와이드 시간 카드 (폭 100%) */
+    .wide { width:100%; }
+    .time-value { font-size:26px; font-weight:800; letter-spacing:0.5px; }
+    .sub { font-size:12px; color:#888; margin-top:6px; }
+
+    .kpi-block { text-align:center; background:#fff; border-radius:16px; padding:16px; box-shadow:0 2px 6px rgba(0,0,0,0.1); }
+    .bar { height:10px; background:#e5e5ea; border-radius:999px; overflow:hidden; }
+    .bar > span { display:block; height:100%; background:#ff3b30; width:0%; transition: width 300ms ease; }
+
+    footer { text-align:center; padding:16px; color:#aaa; font-size:14px; }
+  </style>
+</head>
+<body>
+<div class="iphone-frame">
+  <div class="notch"></div>
+  <div class="iphone-screen">
+    <header>
+      <a class="back" href="main.html">← Main</a>
+      <div class="title">Summary</div>
+    </header>
+
+    <main class="dashboard">
+      <!-- Counts -->
+      <div class="row">
+        <div class="card">
+          <div class="card-title">Stand-ups</div>
+          <div class="card-value" id="stand-count">0<span class="card-unit">times</span></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Squats</div>
+          <div class="card-value" id="squat-count">0<span class="card-unit">times</span></div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="card">
+          <div class="card-title">Goal Progress</div>
+          <div class="card-value"><span id="goal-percent">0</span><span class="card-unit">%</span></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Score</div>
+          <div class="card-value"><span id="score">0</span><span class="card-unit">/ <span id="target">100</span></span></div>
+        </div>
+      </div>
+
+      <!-- 그래프 제거, 와이드 시간 카드 3개 -->
+      <div class="card wide">
+        <div class="card-title">Walking Time</div>
+        <div class="time-value" id="walk-time">00:00:00</div>
+        <div class="sub">walk_toward + walk_away</div>
+      </div>
+
+      <div class="card wide">
+        <div class="card-title">Sitting Time</div>
+        <div class="time-value" id="sit-time">00:00:00</div>
+      </div>
+
+      <div class="card wide">
+        <div class="card-title">Standing Time</div>
+        <div class="time-value" id="stand-time">00:00:00</div>
+      </div>
+
+      <div class="kpi-block">
+        <div class="card-title" style="margin-bottom:8px">Daily Target</div>
+        <div class="bar"><span id="goalBar"></span></div>
+        <div style="margin-top:8px; font-size:13px; color:#666" id="goalDesc">0 / 100</div>
+      </div>
+    </main>
+
+    <footer>RADAR-based Multi-Activity Detection System</footer>
+  </div>
+</div>
+<script>
+  const $ = (id) => document.getElementById(id);
+
+  function secToHMS(sec){sec=Math.max(0,Math.floor(Number(sec)||0));
+    const h=String(Math.floor(sec/3600)).padStart(2,'0');
+    const m=String(Math.floor((sec%3600)/60)).padStart(2,'0');
+    const s=String(sec%60).padStart(2,'0'); return `${h}:${m}:${s}`;}
+
+  // --- 기존 render는 그대로 두고, /status 폴링만 추가 ---
+  async function pullStatus(){
+    try{
+      const r = await fetch("http://127.0.0.1:8000/status", {cache:"no-store"});
+      if(!r.ok) throw 0;
+      const j = await r.json();
+
+      // ✅ 서버에서 오는 카운트 반영
+      if (typeof j.stand_count === 'number')
+        $('stand-count').innerHTML = `${j.stand_count}<span class="card-unit">times</span>`;
+      if (typeof j.squat_count === 'number')
+        $('squat-count').innerHTML = `${j.squat_count}<span class="card-unit">times</span>`;
+
+      // 점수/목표 업데이트(간단 규칙: stand*1+squat*2)
+      const target = Number(localStorage.getItem('todayGoalTarget') ?? 100);
+      const score  = (j.stand_count||0)*1 + (j.squat_count||0)*2;
+      $('score').textContent = score;
+      $('target').textContent = target;
+      const pct = Math.max(0, Math.min(100, Math.round(score/Math.max(1,target)*100)));
+      document.getElementById('goal-percent').textContent = pct;
+      document.getElementById('goalBar').style.width = `${pct}%`;
+      document.getElementById('goalDesc').textContent = `${score} / ${target}`;
+
+      // (참고) 시간이 아직 없어서 00:00:00 유지. 서버가 durations 내려주면 아래처럼 반영:
+      if (j.durations){
+        const walk = (j.durations.walk_toward_sec||0)+(j.durations.walk_away_sec||0);
+        document.getElementById('walk-time').textContent  = secToHMS(walk);
+        document.getElementById('sit-time').textContent   = secToHMS(j.durations.sit_sec||0);
+        document.getElementById('stand-time').textContent = secToHMS(j.durations.stand_sec||0);
+      }
+    }catch(e){ /* 서버 꺼져있으면 조용히 무시 */ }
+  }
+
+  // 주기적으로 갱신
+  pullStatus();
+  setInterval(pullStatus, 1000);
+</script>
+
+</body>
+</html>

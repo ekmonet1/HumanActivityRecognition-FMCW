@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MuST-Net Demo Skeleton</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { display:flex; justify-content:center; align-items:center; height:100vh; background:#e5e5ea; font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif; color:#111; font-size:17px; }
+    .iphone-frame { width:390px; height:844px; background:#000; border-radius:60px; padding:14px; box-shadow:0 0 20px rgba(0,0,0,0.6); position:relative; }
+    .iphone-screen { width:100%; height:100%; border-radius:44px; background:#f2f2f7; overflow:hidden; position:relative; padding-bottom:20px; }
+    .notch { position:absolute; top:8px; left:50%; transform:translateX(-50%); width:150px; height:30px; background:#000; border-radius:0 0 20px 20px; z-index:2; }
+
+    header { background:#fff; padding:24px 20px 16px 20px; border-bottom:1px solid #ccc; }
+    .title { font-size:24px; font-weight:800; }
+    .subtitle { font-size:14px; color:#777; margin-top:4px; }
+
+    main.dashboard { display:flex; flex-direction:column; gap:12px; padding:16px; }
+
+    /* 스켈레톤 카드 */
+    .placeholder { background:#d1d1d6; border-radius:16px; padding:16px; box-shadow:inset 0 0 0 2px #c7c7cc; position:relative; overflow:hidden; }
+    .placeholder .label { font-size:15px; font-weight:750; color:#555; letter-spacing:.2px; text-transform:uppercase; }
+    .placeholder .hint  { margin-top:6px; font-size:15px; color:#6b7280; }
+    .placeholder.tall  { height:120px; display:flex; flex-direction:column; justify-content:center; }
+    .placeholder.wide  { width:100%; }
+    .row { display:flex; gap:12px; }
+    .col { flex:1; display:flex; flex-direction:column; gap:12px; }
+
+    /* 가이드 박스(축약) */
+    .guide { background:#fff; border-radius:14px; padding:12px; font-size:14px; color:#666; box-shadow:0 2px 6px rgba(0,0,0,0.08); }
+    .guide b { color:#ff3b30; }
+
+    footer { text-align:center; padding:14px; color:#a1a1aa; font-size:13px; }
+  </style>
+</head>
+<body>
+<div class="iphone-frame">
+  <div class="notch"></div>
+  <div class="iphone-screen">
+    <header>
+      <div class="title">Demo Skeleton</div>
+      <div class="subtitle">subtitle</div>
+    </header>
+
+    <main class="dashboard">
+      <!-- 1행: 가로 와이드 시간 카드 2개 -->
+      <div class="row">
+        <div class="placeholder tall wide">
+          <div class="label">총 걷는 시간</div>
+          <div class="hint">00:00:00 표시 영역</div>
+        </div>
+        <div class="placeholder tall wide">
+          <div class="label">총 서있는 시간</div>
+          <div class="hint">00:00:00 표시 영역</div>
+        </div>
+      </div>
+
+      <!-- 2행: 카운트 카드 2개 -->
+      <div class="row">
+        <div class="placeholder tall wide">
+          <div class="label">스쿼트 횟수</div>
+          <div class="hint">0 times</div>
+        </div>
+        <div class="placeholder tall wide">
+          <div class="label">일어난(Stand-up) 횟수</div>
+          <div class="hint">0 times</div>
+        </div>
+      </div>
+
+      <!-- 3행: 현재 상태/확신도 자리 -->
+      <div class="row">
+        <div class="col">
+          <div class="placeholder tall">
+            <div class="label">현재 동작</div>
+            <div class="hint">Walking / Sitting / None</div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="placeholder tall">
+            <div class="label">확신도</div>
+            <div class="hint">0.0 ~ 100.0%</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4행: 차트/알림 자리 + 아주 대충 그린 그래프 -->
+      <div class="placeholder" style="height:160px;">
+        <div class="label">차트/알림</div>
+        <canvas id="tinyChart" width="320" height="100" style="display:block; margin-top:10px; width:100%; height:100px;"></canvas>
+      </div>
+
+      <!-- 축약 가이드 -->
+      <div class="guide">
+        <b>GUIDE</b><br>
+        • 이후 실제 빌드에서 이 순서/레이아웃으로 데이터 바인딩 예정:<br>
+        — 총 걷는 시간, 총 서있는 시간, 스쿼트 횟수, 일어난 횟수, 현재 동작, 확신도, 차트/알림
+      </div>
+    </main>
+
+    <footer>RADAR-based Multi-Activity Detection System — Preview</footer>
+  </div>
+</div>
+
+<script>
+/* 아주 대충 그린 막대그래프 (고정값, 축/범례 없음) */
+(function(){
+  const c = document.getElementById('tinyChart');
+  const dpr = window.devicePixelRatio || 1;
+  // 레티나 보정
+  const cssW = c.clientWidth, cssH = c.clientHeight;
+  c.width = Math.round(cssW * dpr);
+  c.height = Math.round(cssH * dpr);
+
+  const ctx = c.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const W = cssW, H = cssH;
+  const padding = 12;
+  const baseY = H - padding;
+  const maxBarH = H - padding*2;
+
+  // 대충 고정 데이터 (0~1 스케일)
+  const labels = ['walk','stand','sit','squat'];
+  const vals   = [0.7, 0.5, 0.3, 0.2];
+
+  // 바 너비/간격
+  const gap = 10;
+  const barW = (W - padding*2 - gap*(vals.length-1)) / vals.length;
+
+  // 배경 라인(밝은 회색)
+  ctx.strokeStyle = '#cfcfd4';
+  ctx.lineWidth = 1;
+  [0.25, 0.5, 0.75].forEach(t => {
+    const y = baseY - maxBarH*t;
+    ctx.beginPath(); ctx.moveTo(padding, y); ctx.lineTo(W-padding, y); ctx.stroke();
+  });
+
+  // 막대
+  for (let i=0;i<vals.length;i++){
+    const x = padding + i*(barW+gap);
+    const h = Math.max(2, vals[i]*maxBarH);
+    ctx.fillStyle = '#ff3b30aa';
+    ctx.fillRect(x, baseY - h, barW, h);
+
+    // 라벨
+    ctx.fillStyle = '#555';
+    ctx.font = '12px -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif';
+    const text = labels[i];
+    const tw = ctx.measureText(text).width;
+    ctx.fillText(text, x + (barW - tw)/2, baseY + 14);
+  }
+})();
+</script>
+</body>
+</html>
